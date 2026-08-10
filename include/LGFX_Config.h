@@ -15,10 +15,10 @@ public:
       auto cfg = _bus_instance.config();
 
       cfg.spi_host = SPI2_HOST;
-      cfg.spi_mode = 0;
+      cfg.spi_mode = 3;
       cfg.freq_write = 40000000;
-      cfg.freq_read = 16000000;
-      cfg.spi_3wire = false;
+      cfg.freq_read = 20000000;
+      cfg.spi_3wire = true;
       cfg.use_lock = true;
       cfg.dma_channel = SPI_DMA_CH_AUTO;
 
@@ -49,7 +49,7 @@ public:
       cfg.invert = true;       // panel ST7789 ini butuh color invert
       cfg.rgb_order = false;   // urutan warna RGB (bukan BGR)
       cfg.dlen_16bit = false;
-      cfg.bus_shared = false;
+      cfg.bus_shared = true;
 
       _panel_instance.config(cfg);
     }
