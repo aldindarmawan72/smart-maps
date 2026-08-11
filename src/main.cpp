@@ -3,19 +3,23 @@
 #include "LVGL_Config.h"
 #include "ChronosManager.h"
 #include "AppStateMachine.h"
+#include "NavigationScreenLVGL.h"
+#include "Config.h"
 
 // ============================================================
-// FASE 2 — State Machine Test
-// Tujuan: validasi logika transisi 4-state (PRD paragraf 4) pakai
-// 4 layar placeholder warna solid, SEBELUM UI detail per screen
-// dibangun (nav = Fase 3, home = Fase 4, video asli = Fase 6).
+// FASE 3 — Layar Navigasi
+// Tujuan: NavigationScreenLVGL (di-port persis dari referensi)
+// disambungkan ke AppStateMachine. Placeholder cuma tersisa untuk
+// BOOT_VIDEO, HOME, IDLE_VIDEO (belum dibangun - Fase 4 & 6).
 // ============================================================
 
 LVGL_Display &display = LVGL_Display::getInstance();
 ChronosManager &chronos = ChronosManager::getInstance();
 AppStateMachine &stateMachine = AppStateMachine::getInstance();
+NavigationScreenLVGL navScreen;
 
-lv_obj_t *placeholderScreens[4];
+// index 0 = BOOT_VIDEO, 1 = HOME, 2 = IDLE_VIDEO (NAVIGATION pakai navScreen, bukan placeholder)
+lv_obj_t *placeholderScreens[3];
 
 void createPlaceholderScreen(int index, uint32_t bgColorHex, const char* title, const char* subtitle) {
   lv_obj_t *scr = lv_obj_create(NULL);
@@ -39,39 +43,42 @@ void createPlaceholderScreen(int index, uint32_t bgColorHex, const char* title, 
   placeholderScreens[index] = scr;
 }
 
-int stateToIndex(AppState s) {
-  switch (s) {
-    case AppState::BOOT_VIDEO: return 0;
-    case AppState::HOME:       return 1;
-    case AppState::NAVIGATION: return 2;
-    case AppState::IDLE_VIDEO: return 3;
-  }
-  return 0;
-}
-
 void onStateChange(AppState oldState, AppState newState) {
-  lv_scr_load(placeholderScreens[stateToIndex(newState)]);
+  if (newState == AppState::NAVIGATION) {
+    // Layar navigasi asli, bukan placeholder
+    navScreen.display();
+    return;
+  }
+
+  switch (newState) {
+    case AppState::BOOT_VIDEO: lv_scr_load(placeholderScreens[0]); break;
+    case AppState::HOME:       lv_scr_load(placeholderScreens[1]); break;
+    case AppState::IDLE_VIDEO: lv_scr_load(placeholderScreens[2]); break;
+    default: break;
+  }
 }
 
 void setup() {
   Serial.begin(115200);
   delay(500);
-  Serial.println("=== Fase 2: State Machine Test ===");
+  Serial.println("=== Fase 3: Layar Navigasi Test ===");
 
   display.init();
 
-  // 4 layar placeholder - warna solid berbeda per state, cuma untuk
-  // memvalidasi LOGIKA TRANSISI. UI detail belum di sini.
+  // 3 layar placeholder yang masih tersisa (belum dibangun - Fase 4 & 6)
   createPlaceholderScreen(0, 0x1A1A1A, "BOOT VIDEO", "Menunggu koneksi BLE...\nCari 'Smart Maps Watch' di app Chronos");
   createPlaceholderScreen(1, 0x1E3A5F, "HOME", "BLE connected");
-  createPlaceholderScreen(2, 0x1F4D2E, "NAVIGATION", "Navigasi aktif");
-  createPlaceholderScreen(3, 0x4A2E5F, "IDLE VIDEO", "Diam 15 detik di HOME");
+  createPlaceholderScreen(2, 0x4A2E5F, "IDLE VIDEO", "Diam 15 detik di HOME");
 
   lv_scr_load(placeholderScreens[0]); // mulai dari BOOT_VIDEO
 
   stateMachine.setOnStateChange(onStateChange);
 
   chronos.init(display.getTft());
+
+  // Buat layar navigasi sekali di awal (widget-widgetnya dibuat sekali,
+  // datanya di-update terus tiap loop() selama state NAVIGATION aktif)
+  navScreen.create();
 
   Serial.println("Setup selesai. Amati Serial log untuk urutan transisi state.");
 }
@@ -80,5 +87,19 @@ void loop() {
   display.update();
   chronos.update();
   stateMachine.update(chronos);
+
+  // Selama di state NAVIGATION, update data navigasi secara periodik
+  // (pola sama seperti NavigationManagerLVGL di referensi: interval
+  // dari Config::NAV_UPDATE_INTERVAL, lalu updateNavigation() + display())
+  if (stateMachine.getState() == AppState::NAVIGATION) {
+    static unsigned long lastNavUpdate = 0;
+    unsigned long now = millis();
+    if (now - lastNavUpdate >= Config::NAV_UPDATE_INTERVAL) {
+      lastNavUpdate = now;
+      navScreen.updateNavigation(chronos.getNavData());
+      navScreen.display();
+    }
+  }
+
   delay(5);
 }
