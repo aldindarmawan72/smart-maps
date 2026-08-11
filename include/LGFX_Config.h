@@ -1,7 +1,6 @@
 #ifndef LGFX_CONFIG_H
 #define LGFX_CONFIG_H
 
-#define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
 // Konfigurasi display ST7789 240x240 untuk ESP32-C3 Super Mini
