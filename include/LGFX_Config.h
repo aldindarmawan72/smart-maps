@@ -15,7 +15,11 @@ public:
 
       cfg.spi_host = SPI2_HOST;
       cfg.spi_mode = 3;
-      cfg.freq_write = 40000000;
+      cfg.freq_write = 20000000;   // EKSPERIMEN: diturunkan dari 40MHz -> 20MHz
+                                    // untuk tes apakah font buram/bergerigi terkait
+                                    // sinyal SPI. Wiring disolder rapi, jadi ini
+                                    // kemungkinan BUKAN akar masalah - kalau nggak
+                                    // ada perubahan, kita cari penyebab lain.
       cfg.freq_read = 20000000;
       cfg.spi_3wire = true;
       cfg.use_lock = true;
