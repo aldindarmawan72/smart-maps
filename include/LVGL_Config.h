@@ -1,10 +1,9 @@
 #ifndef LVGL_CONFIG_H
 #define LVGL_CONFIG_H
 
-#include <lvgl.h>
 #include <Arduino.h>
-#include "LGFX_Config.h"  // Konfigurasi LovyanGFX (driver ST7789)
-
+#include "LGFX_Config.h"  // Konfigurasi LovyanGFX
+#include <lvgl.h>         // Include LVGL sebelum file lain yang bergantung padanya
 
 class LVGL_Display {
 private:
@@ -42,18 +41,21 @@ public:
         _tft.setRotation(0);
         _tft.setBrightness(255);
 
-        // CATATAN PIN: BLK (backlight) panel ini diasumsikan terhubung
-        // langsung ke 3V3 (always-on), BUKAN dikontrol lewat GPIO.
-        // GPIO7 sudah dipakai sebagai pin DC oleh LGFX_Config.h (SPI),
-        // jadi TIDAK BOLEH dipakai ulang untuk backlight - itu akan
-        // bentrok dengan jalur sinyal DC dan bisa bikin layar glitch.
-        // Kalau nanti mau kontrol brightness lewat GPIO, pakai pin
-        // bebas lain (misal GPIO2/GPIO3) dan update setBacklight() di bawah.
+        // Konfigurasi backlight untuk ESP32-C3
+        pinMode(7, OUTPUT);
+        digitalWrite(7, HIGH); // BLK ON
 
         // Inisialisasi LVGL
         lv_init();
 
-        // Alokasi buffer render (20 baris, double buffer)
+        // Pastikan animation aktif
+        #if LV_USE_ANIMATION
+        Serial.println("LVGL animations are enabled");
+        #else
+        Serial.println("WARNING: LVGL animations are disabled!");
+        #endif
+
+        // Alokasi buffer render
         _buf1 = (lv_color_t *)heap_caps_malloc(_screenWidth * 20 * sizeof(lv_color_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         _buf2 = (lv_color_t *)heap_caps_malloc(_screenWidth * 20 * sizeof(lv_color_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
@@ -62,8 +64,10 @@ public:
             return;
         }
 
+        // Inisialisasi buffer gambar
         lv_disp_draw_buf_init(&_draw_buf, _buf1, _buf2, _screenWidth * 20);
 
+        // Inisialisasi driver display
         lv_disp_drv_init(&_disp_drv);
         _disp_drv.hor_res = _screenWidth;
         _disp_drv.ver_res = _screenHeight;
@@ -92,10 +96,8 @@ public:
         return &_tft;
     }
 
-    // Backlight belum dikontrol lewat GPIO (lihat catatan di init()).
-    // Method ini sengaja jadi no-op sampai BLK dikabel ke pin bebas.
     void setBacklight(bool on) {
-        // TODO: implementasikan setelah BLK dikabel ke GPIO bebas (bukan GPIO7)
+        digitalWrite(7, on ? HIGH : LOW);
     }
 
     static LVGL_Display& getInstance() {
